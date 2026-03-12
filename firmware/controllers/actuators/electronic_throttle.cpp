@@ -39,7 +39,7 @@
 
 #include "electronic_throttle_impl.h"
 
-//#if EFI_ELECTRONIC_THROTTLE_BODY
+#if EFI_ELECTRONIC_THROTTLE_BODY
 
 #include "dc_motor.h"
 #include "dc_motors.h"
@@ -1088,7 +1088,7 @@ void setProteusHitachiEtbDefaults() {
 #endif // HW_PROTEUS
 }
 
-//#endif /* EFI_ELECTRONIC_THROTTLE_BODY */
+#endif /* EFI_ELECTRONIC_THROTTLE_BODY */
 
 // So far used by FragmentEntry (LiveData)
 template<>
