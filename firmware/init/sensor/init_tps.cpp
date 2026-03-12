@@ -9,6 +9,7 @@
 #include "tps.h"
 #include "auto_generated_sensor.h"
 #include "defaults.h"
+#include "pulse_width_sensor.h"
 
 struct TpsConfig {
 	adc_channel_e channel;
@@ -152,7 +153,33 @@ printf("init m_redund.Register() %s\n", getSensorType(m_redund.type()));
 		} else {
 			m_redund.unregister();
 		}
+	}
 
+	// Initialize with a PWM primary (already registered externally) and optional analog secondary.
+	// minDuty/maxDuty are raw fractions (e.g. 0.2/0.7) matching what PulseWidthSensor posts.
+	void initPwmPlusAnalog(PulseWidthSensor& pwmSensor, LinearFunc& pwmConverter,
+	                       brain_pin_e pwmPin,
+	                       float minDuty, float maxDuty,
+	                       const TpsConfig& secondary) {
+		// Map duty range → 0..100% pedal position
+		pwmConverter.configure(minDuty, 0, maxDuty, POSITION_FULLY_OPEN, -0.5f, 100.5f);
+		pwmSensor.initIfValid(pwmPin, pwmConverter);
+
+		// Analog secondary is optional — if absent, run in single-sensor mode
+		bool hasSecond = m_sec.init(secondary);
+
+		if (engineConfiguration->etbSplit <= 0 || engineConfiguration->etbSplit > MAX_TPS_PPS_DISCREPANCY) {
+			engineConfiguration->etbSplit = MAX_TPS_PPS_DISCREPANCY;
+		}
+
+		m_redund.configure(engineConfiguration->etbSplit, !hasSecond);
+		m_redund.Register();
+	}
+
+	void deinitPwmPlusAnalog() {
+		// PWM primary (PulseWidthSensor) is deInit'd externally via file-scope static
+		m_sec.deinit();
+		m_redund.unregister();
 	}
 
   // technical debt: oop violation: this method is specific to PPS usage
@@ -190,6 +217,10 @@ static RedundantFordTps fordPps(SensorType::AcceleratorPedalUnfiltered, SensorTy
 static FuncSensPair pedalPrimary(1, SensorType::AcceleratorPedalPrimary);
 static FuncSensPair pedalSecondary(1, SensorType::AcceleratorPedalSecondary);
 static RedundantPair pedal(pedalPrimary, pedalSecondary, SensorType::AcceleratorPedalUnfiltered);
+
+// PWM duty-cycle pedal (primary channel alternative to analog ADC)
+static LinearFunc pwmPedalFunc;
+static PulseWidthSensor pwmPedalSensor(SensorType::AcceleratorPedalPrimary, MS2NT(100), 50.0f, 500.0f);
 
 void updateUnfilteredRawPedal() {
   pedal.updateUnfilteredRawValues();
@@ -243,11 +274,26 @@ void initTps() {
 		}
 
 	// Pedal sensors
-	pedal.init(isFordPps, &fordPps, ppsSecondaryMaximum,
-		{ engineConfiguration->throttlePedalPositionAdcChannel, engineConfiguration->throttlePedalUpVoltage, engineConfiguration->throttlePedalWOTVoltage, minTpsPps, maxTpsPps },
-		{ engineConfiguration->throttlePedalPositionSecondAdcChannel, engineConfiguration->throttlePedalSecondaryUpVoltage, engineConfiguration->throttlePedalSecondaryWOTVoltage, minTpsPps, maxTpsPps },
-		engineConfiguration->allowIdenticalPps
-	);
+	if (isBrainPinValid(engineConfiguration->throttlePedalPwmPin)) {
+		// PWM primary + optional analog secondary
+		pedal.initPwmPlusAnalog(
+			pwmPedalSensor, pwmPedalFunc,
+			engineConfiguration->throttlePedalPwmPin,
+			engineConfiguration->throttlePedalPwmMinDuty,
+			engineConfiguration->throttlePedalPwmMaxDuty,
+			{ engineConfiguration->throttlePedalPositionSecondAdcChannel,
+			  engineConfiguration->throttlePedalSecondaryUpVoltage,
+			  engineConfiguration->throttlePedalSecondaryWOTVoltage,
+			  minTpsPps, maxTpsPps }
+		);
+	} else {
+		// Normal dual-analog pedal path
+		pedal.init(isFordPps, &fordPps, ppsSecondaryMaximum,
+			{ engineConfiguration->throttlePedalPositionAdcChannel, engineConfiguration->throttlePedalUpVoltage, engineConfiguration->throttlePedalWOTVoltage, minTpsPps, maxTpsPps },
+			{ engineConfiguration->throttlePedalPositionSecondAdcChannel, engineConfiguration->throttlePedalSecondaryUpVoltage, engineConfiguration->throttlePedalSecondaryWOTVoltage, minTpsPps, maxTpsPps },
+			engineConfiguration->allowIdenticalPps
+		);
+	}
 	ppsFilterSensor.setProxiedSensor(SensorType::AcceleratorPedalUnfiltered);
 	ppsFilterSensor.setConverter([](SensorResult arg) {
 	  if (!arg) {
@@ -266,7 +312,8 @@ void initTps() {
 	}
 
 	// Route the pedal or TPS to driverIntent as appropriate
-	if (isAdcChannelValid(engineConfiguration->throttlePedalPositionAdcChannel)) {
+	if (isBrainPinValid(engineConfiguration->throttlePedalPwmPin) ||
+	    isAdcChannelValid(engineConfiguration->throttlePedalPositionAdcChannel)) {
 		driverIntent.setProxiedSensor(SensorType::AcceleratorPedal);
 	} else {
 		driverIntent.setProxiedSensor(SensorType::Tps1);
@@ -281,7 +328,13 @@ void deinitTps() {
 
 	analogTps1.deinit(isFordTps, &fordTps1);
 	tps2.deinit(isFordTps, &fordTps2);
-	pedal.deinit(isFordPps, &fordPps);
+
+	if (isBrainPinValid(activeConfiguration.throttlePedalPwmPin)) {
+		pwmPedalSensor.deInit();
+		pedal.deinitPwmPlusAnalog();
+	} else {
+		pedal.deinit(isFordPps, &fordPps);
+	}
 
 #if EFI_SENT_SUPPORT
 	sentTps.unregister();

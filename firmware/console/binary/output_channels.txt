@@ -199,6 +199,7 @@ int16_t rpmAcceleration;dRPM;"RPM acceleration/Rate of Change/ROC",1, 0, 0, 5, 2
 	float rawPpsSecondary;;"V",1, 0, 0, 5, 3
 	float rawRawPpsPrimary;;"V",1, 0, 0, 5, 3
 	float rawRawPpsSecondary;;"V",1, 0, 0, 5, 3
+	float rawPwmPedalDuty;Raw PWM pedal duty cycle;"percent",100, 0, 0, 100, 1
 
 
 	int16_t autoscale idlePositionSensor;@@GAUGE_NAME_IDLE_POSITION@@;"%",{1/@@PACK_MULT_PERCENT@@}, 0, 0, 0, 2

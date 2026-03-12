@@ -1261,6 +1261,10 @@ tps_limit_t tps2Max;Fully opened voltage for primary throttle position sensor
 	float throttlePedalUpVoltage;;"volts", 1, 0, -6, 6, 2
 	float throttlePedalWOTVoltage;Pedal in the floor;"volts", 1, 0, -6, 6, 2
 
+	Gpio throttlePedalPwmPin;Accelerator pedal PWM input pin. When set, used as primary pedal channel instead of analog ADC.
+	float throttlePedalPwmMinDuty;Pedal PWM duty cycle at idle/released position;"percent", 100, 0, 0, 100, 1
+	float throttlePedalPwmMaxDuty;Pedal PWM duty cycle at WOT/floored position;"percent", 100, 0, 0, 100, 1
+
 	int16_t startUpFuelPumpDuration;on IGN voltage detection turn fuel pump on to build fuel pressure;"seconds", 1, 0, 0, 6000, 0
 	uint16_t mafFilterParameter;larger value = larger intake manifold volume;"", 1, 0, 0, 10000, 0
 

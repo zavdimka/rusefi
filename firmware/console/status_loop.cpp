@@ -479,6 +479,8 @@ static void updateRawSensors() {
 	engine->outputChannels.rawTps2Secondary = Sensor::getRaw(SensorType::Tps2Secondary);
 	engine->outputChannels.rawPpsPrimary = Sensor::getRaw(SensorType::AcceleratorPedalPrimary);
 	engine->outputChannels.rawPpsSecondary = Sensor::getRaw(SensorType::AcceleratorPedalSecondary);
+	// Raw duty cycle [0..1] from PulseWidthSensor; displayed as 0..100% in TS for min/max calibration
+	engine->outputChannels.rawPwmPedalDuty = Sensor::getRaw(SensorType::AcceleratorPedalPrimary);
 	engine->outputChannels.rawBattery = Sensor::getRaw(SensorType::BatteryVoltage);
 	engine->outputChannels.rawClt = Sensor::getRaw(SensorType::Clt);
 	engine->outputChannels.rawIat = Sensor::getRaw(SensorType::Iat);
