@@ -776,7 +776,7 @@ end_struct
 
 afr_sensor_s afr
 
-#define MAX_TPS_PPS_DISCREPANCY 5
+#define MAX_TPS_PPS_DISCREPANCY 20
 
 adc_channel_e throttlePedalPositionAdcChannel;Electronic throttle pedal position first channel\nSee throttlePedalPositionSecondAdcChannel for second channel\nSee also tps1_1AdcChannel\nSee throttlePedalUpVoltage and throttlePedalWOTVoltage
     uint8_t autoscale etbSplit;TPS/PPS error threshold;"%", 0.1, 0, 0, @@MAX_TPS_PPS_DISCREPANCY@@, 1

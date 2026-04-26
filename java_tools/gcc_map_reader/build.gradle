@@ -1,16 +1,9 @@
-plugins {
-    id 'java'
-    id 'application'
-}
-
 defaultTasks 'shadowJar'
 
-jar {
-    application {
-        mainClass = 'rusefi.GccMapReader'
-    }
+shadowJar {
+    archiveFileName = 'gcc_map_reader.jar'
+    destinationDirectory = file("$projectDir/..")
 
-    destinationDirectory = file( '$rootDir/../..' )
     manifest {
         attributes(
             'Main-Class': 'rusefi.GccMapReader'
